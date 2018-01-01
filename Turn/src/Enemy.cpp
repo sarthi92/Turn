@@ -1,8 +1,10 @@
 #include <iostream>
 #include <vector>
-#include "..\include\Common.h"
-#include "..\include\Enemy.h"
-
+#include <cstdlib>
+#include <string>
+#include "../include/Common.h"
+#include "../include/Enemy.h"
+#include "../include/Console.h"
 
 using namespace std;
 using namespace Common;
@@ -18,7 +20,7 @@ Enemy::Enemy(){
     ExperienceAmount = 0;
 }
 
-int Enemy::Attack(){
+int Enemy::Action(){
     // Returns damage hit for the player. Uses random number to select enemy's move.
 
   int selector = rand()%9;
@@ -75,9 +77,9 @@ int Enemy::GenericAttack(){
     int damage = ReturnDamage();
 
     // Prints how much damage the enemy deals to the player.
-	ColourPrint(name, DARK_GREY);
+	ColourPrint(name, Console::DarkGrey);
     cout << " attacks! It deals ";
-	ColourPrint(to_string(damage), RED);
+	ColourPrint(to_string(damage), Console::Red);
     cout << " damage!" << endl << endl;
     return damage;
 }
@@ -88,9 +90,9 @@ int Enemy::RiskAttack(){
     int damage = ReturnRiskAttackDamage();
 
     // Prints how much damage the enemy deals to the player.
-	ColourPrint(name, DARK_GREY);
+	ColourPrint(name, Console::DarkGrey);
     cout << " takes a risk and attacks! It deals ";
-	ColourPrint(to_string(damage), RED);
+	ColourPrint(to_string(damage), Console::Red);
     cout << " damage!" << endl << endl;
     return damage;
 }
@@ -136,4 +138,9 @@ int Enemy::ReturnItemDrop(int item){
         return 0;
         break;
     }
+}
+
+std::string Enemy::GetIntro()
+{
+	return "A distant noise coming closer...";
 }

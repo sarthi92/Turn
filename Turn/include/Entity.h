@@ -2,13 +2,12 @@
 #define ENTITY_H
 
 #include <string>
-#include <Windows.h>
 
 class Entity {
 public:
 	Entity();
 	std::string GetName();
-	virtual int Attack() = 0;
+	virtual int Action() = 0;
 	void TakeDamage(int);
 	bool IsDead();
 
@@ -25,7 +24,6 @@ protected:
 
 	std::string name;
 	int health;
-	HANDLE hConsole;
 };
 
 #endif // ENTITY_H

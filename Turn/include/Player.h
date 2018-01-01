@@ -3,14 +3,16 @@
 
 #include "Entity.h"
 #include "Enemy.h"
+#include "Sound.h"
 
-class Player : public Entity {
+class Player : public Entity, public SoundMaker {
     // Contains the functions needed to construct the player's character.
     public:
+		Player(void);
         void SaveGame();
 
         void SetPlayerData();
-        int Attack();
+        int Action();
 	void UseItem();
         void AddToInventory(std::vector<int>);
 	void AddStoreItemToInventory(int);
@@ -37,6 +39,7 @@ class Player : public Entity {
         int UseBomb();
         void DeductDamage(int&);
         int ReturnBowDamage();
+		void WeakenWeapon(int impact);
 
         int Flee();
 
@@ -47,6 +50,7 @@ class Player : public Entity {
 
 	int player_type;
         int level;
+        char gender;
 	int experience;
         int whetstones;
         int arrows;

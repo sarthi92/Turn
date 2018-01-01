@@ -1,9 +1,9 @@
 #include <iostream>
-#include <Windows.h>
 
-#include "..\include\Common.h"
-#include "..\include\Store.h"
-#include "..\include\ItemTypes.h"
+#include "../include/Common.h"
+#include "../include/Store.h"
+#include "../include/StoreGreetings.h"
+#include "../include/ItemTypes.h"
 
 
 using namespace std;
@@ -29,7 +29,8 @@ void Store::StoreFront(Player* _Player) {
 		coins = _Player->GetCoins();
 		cout << endl << endl;
 		_Player->DisplayInventory();
-		cout << endl << " Jeremy's Tools Store" << endl << endl;
+		cout << endl << " Jeremy's Tools Store" << endl;
+		cout << " \"" << random_greeting() << "\"" << endl << endl;
 		cout << " ----ITEM----------------COST------ " << endl << endl;
 		cout << " 1) Arrows x 5\t\t " << arrowsCost << endl;
 		cout << " 2) Bomb\t\t " << bombCost << endl;

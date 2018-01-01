@@ -3,12 +3,25 @@
 #include <cmath>
 #include <string>
 
-#include "..\include\Common.h"
-#include "..\include\Player.h"
-#include "..\include\ItemTypes.h"
+#include "../include/Common.h"
+#include "../include/Player.h"
+#include "../include/Console.h"
+#include "../include/ItemTypes.h"
 
 using namespace std;
 using namespace Common;
+
+#define SKIP_TURN -2
+
+Player::Player(void) 
+{
+	// Initialize default sounds, attackRange should be 
+	// the result range of the ReturnDamage method in the child class
+	// Child constructor should call SetSoundInfo with appropriate stuff
+	SoundInfo info;
+	info.attackRange = std::make_pair(1, 1);
+	SetSoundInfo(info);
+}
 
 void Player::SaveGame(){
 
@@ -17,6 +30,7 @@ void Player::SaveGame(){
 	if (WriteData.is_open()) {
         	WriteData << player_type << endl 
 			<< name << endl
+            << gender << endl
 			<< level << endl
 			<< experience << endl
 			<< health << endl
@@ -44,6 +58,7 @@ void Player::SetPlayerData(){
 		ReadData >> player_type;
     ReadData.ignore();       // Ignore rest of line ready for getline
     getline(ReadData, name);
+    ReadData >> gender;
     ReadData >> level;
     ReadData >> experience;
 		ReadData >> health;
@@ -59,7 +74,7 @@ void Player::SetPlayerData(){
 	}
 }
 
-int Player::Attack(){
+int Player::Action(){
     // Returns the amount of attack points the player gives.
     // Also the main battle screen.
 
@@ -82,24 +97,36 @@ int Player::Attack(){
 
 	while (true) {
 		choice = input();
-
+		int damage = 0;
 		// Evaluates player's choice.
 		switch (choice) {
 		case 0:
 			return Flee();
 		case 1:
 			// Player generically attacks.
-			return GenericAttack();
+			damage = GenericAttack();
+			PlayPrimaryAttack(damage);
+			return damage;
 		case 2:
 			// Player takes a risk and attacks.
-			return RiskAttack();
+			damage = RiskAttack();
+			PlayPrimaryAttack(damage);
+			return damage;
 		case 3:
 			// Player shoots their bow.
 			if (arrows > 0)
+			{
+				PlaySecondaryAttack();
 				return BowAndArrow();
-			break;
+			}
+			else {
+				cout << "No arrows in the inventory!" << endl;
+				Sleep(SLEEP_MS);
+				return SKIP_TURN;
+			}
 		case 4:
 			// Player heals, no damage is done to enemy.
+			PlayHeal();
 			Heal();
 			return 0;
 		case 5:
@@ -107,15 +134,20 @@ int Player::Attack(){
 			// Does not execute if there are no bombs in the inventory.
 			if (bombs > 0)
 				return UseBomb();
-			break;
+			else {
+				cout << "No bombs in the inventory!" << endl;
+				return SKIP_TURN;
+			}
 		case 6:
 			// Player drinks a potion.
 			// Does not execute if there are no potions in the inventory.
 			if (potions > 0) {
 				UsePotion();
 				return 0;
+			}else {
+				cout << "No potions in the inventory!" << endl;
+				return SKIP_TURN;
 			}
-			break;
 		case 7:
 			// Player sharpens their weapon with a whetstone.
 			// Does not execute if there are no whetstones in inventory.
@@ -123,8 +155,10 @@ int Player::Attack(){
 			if (whetstones > 0) {
 				UseWhetstone();
 				return 0;
+			} else {
+				cout << "No whetstones in the inventory!" << endl;
+				return SKIP_TURN;
 			}
-			break;
 		default:
 			// Generically attacks by default if player's choice does not equal above cases.
 			return GenericAttack();
@@ -163,8 +197,8 @@ void Player::UseItem() {
 			} else {
 				cout << "No potions in the inventory!" << endl;
 				Sleep(SLEEP_MS);
-			}
 
+			}
 			break;
 		case 2:
 			// Player sharpens their weapon with a whetstone.
@@ -238,7 +272,7 @@ void Player::DisplayHUD(Enemy *_Enemy){
 
     // Prints player's name.
     cout << endl;
-	ColourPrint(name, DARK_GREY);
+	ColourPrint(name, Console::DarkGrey);
     // Tabs to make room for enemy's name.
     if (name.length() > 5){
         cout << "\t\t\t";
@@ -247,7 +281,7 @@ void Player::DisplayHUD(Enemy *_Enemy){
         cout <<" \t\t\t";
     }
     // Prints enemy name.
-	ColourPrint(_Enemy->GetName(), DARK_GREY);
+	ColourPrint(_Enemy->GetName(), Console::DarkGrey);
 	cout << endl;
 	DisplayHealthBar();
 }
@@ -349,55 +383,75 @@ int Player::GetCoins() {
 int Player::GenericAttack(){
     int damage = ReturnDamage();
     DeductDamage(damage);
-	ColourPrint(name, DARK_GREY);
-    cout << " attacks! He deals ";
-	ColourPrint(to_string(damage), RED);
+	ColourPrint(name, Console::DarkGrey);
+    if (gender == 'M')
+        cout << " attacks! He deals ";
+    else
+        cout << " attacks! She deals ";
+	ColourPrint(to_string(damage), Console::Red);
     cout << " damage points!" << endl;
-    if (damage>0) weaponstrength-= 2+rand()%5;
+    if (damage>0) WeakenWeapon(2);
     return damage;
 }
 
 int Player::RiskAttack(){
     int damage = ReturnRiskAttackDamage();
     DeductDamage(damage);
-	ColourPrint(name, DARK_GREY);
+	ColourPrint(name, Console::DarkGrey);
     cout << " takes a risk and attack! It deals ";
-	ColourPrint(to_string(damage), RED);
+	ColourPrint(to_string(damage), Console::Red);
     cout << " damage points!" << endl;
 
-    if (damage>0) weaponstrength-= 4+rand()%5;
+    if (damage>0) WeakenWeapon(4);
     return damage;
+
+}
+
+void Player::WeakenWeapon(int impact){
+	if (impact >= 0) weaponstrength -= impact + rand() % 5;
+	else weaponstrength -= rand() % 5;
+	
+	if (weaponstrength < 0)
+	{
+		weaponstrength = 0;
+	}
 }
 
 int Player::BowAndArrow(){
     int damage = ReturnBowDamage();
-	ColourPrint(name, DARK_GREY);
-    cout << " shoots his bow! He deals ";
-    SetConsoleTextAttribute(hConsole, RED);
+	ColourPrint(name, Console::DarkGrey);
+    if (gender == 'M')
+        cout << " shoots his bow! He deals ";
+    else
+        cout << " shoots her bow! She deals ";
+	Console::GetInstance().SetColour(Console::EColour::Red);
     cout << damage;
-    SetConsoleTextAttribute(hConsole, GREY);
+	Console::GetInstance().SetColour(Console::EColour::Default);
     cout << " damage points!" << endl;
     return damage;
 }
 
 void Player::UseWhetstone(){
     weaponstrength=100;
-	ColourPrint(name, DARK_GREY);
-    cout << " sharpened his weapon!" << endl;
+	ColourPrint(name, Console::DarkGrey);
+    if (gender == 'M')
+        cout << " sharpened his weapon!" << endl;
+    else
+        cout << " sharpened her weapon!" << endl;
     whetstones--;
 }
 
 void Player::UsePotion(){
     health=100;
-	ColourPrint(name, DARK_GREY);
+	ColourPrint(name, Console::DarkGrey);
     cout << " drank a healing potion!" << endl;
     potions--;
 }
 
 int Player::UseBomb(){
-	ColourPrint(name, DARK_GREY);
+	ColourPrint(name, Console::DarkGrey);
     cout << " hurls a bomb! It deals ";
-	ColourPrint("50", RED);
+	ColourPrint("50", Console::Red);
 	cout << " damage points!" << endl;
 
 	bombs--;
@@ -427,7 +481,7 @@ int Player::ReturnBowDamage(){
 }
 
 int Player::Flee(){
-	ColourPrint(name, DARK_GREY);
+	ColourPrint(name, Console::DarkGrey);
     cout << " chooses to flee!" << endl;
     return -1;
 }

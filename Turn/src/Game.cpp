@@ -1,14 +1,15 @@
 #include <iostream>
 #include <ctime>
 #include <fstream>
-#include <Windows.h>
 #include <string>
+#include <limits>
 
-#include "..\include\Game.h"
-#include "..\include\Common.h"
+#include "../include/Game.h"
+#include "../include/Common.h"
+#include "../include/Console.h"
 
-#include "..\include\PlayerTypes\PlayerTypes.h"
-#include "..\include\EnemyTypes\EnemyTypes.h"
+#include "../include/PlayerTypes/PlayerTypes.h"
+#include "../include/EnemyTypes/EnemyTypes.h"
 
 
 using namespace std;
@@ -19,10 +20,12 @@ using namespace Common;
 #undef max
 #endif
 
+#define SKIP_TURN -2
+
 void Game::MainMenu(){
     // Main menu. Loops until you start
     // a game or quit.
-	    for (int choice=0; choice!=3;){
+	    for (int choice=-1; choice!=0;){
         choice = GetChoice(MenuType::eMain);
         switch(choice){
 			case 1:
@@ -31,7 +34,7 @@ void Game::MainMenu(){
 			case 2:
 				HowToPlay();
 				break;
-			case 3:
+			case 0:
 				break;
         }
     }
@@ -47,6 +50,21 @@ string Game::InitializePlayerName() {
   cin.ignore();
 	getline(cin,name); // Change to full name
 	return name;
+}
+
+char Game::InitializePlayerGender() {
+    char gender;
+    do {
+        ClearScreen();
+        cout << "What is your gender (M or F)?"
+            << endl << endl
+            << "> ";
+
+        cin >> gender;
+        gender = toupper(gender);
+    } while (gender != 'M' && gender != 'F');
+
+    return gender;
 }
 
 
@@ -113,9 +131,10 @@ void Game::SetPlayerData(){
 		ReadData.close();
 		ofstream WriteData;
 		WriteData.open("data.txt");
-		
+
 		WriteData << InitializePlayerClass() << endl
 			<< InitializePlayerName() << endl
+            << InitializePlayerGender() << endl
 			<< 1 << endl
 			<< 0 << endl
 			<< 100 << endl
@@ -141,27 +160,72 @@ void Game::SetEnemy(){
     // Generates a random integer to determine class of the enemy.
     // The abstract class Enemy is morphed with one of its child classes.
 
-    int selector = rand()%5;
-    switch(selector){
-        case 0:
+    EnemyType selector = EnemyType(rand()%etNumEnemyTypes);
+    switch(selector)
+    {
+        case etSlimeball:
+	    // Enemy is a slimeball.
+	    _Enemy = new Slimeball;
+            break;
+        case etCrab:
             // Enemy is a crab.
             _Enemy = new Crab;
             break;
-        case 1:
+        case etGiantCrab:
             // Enemy is a giant crab.
             _Enemy = new GiantCrab;
             break;
-        case 2:
+        case etSquid:
             // Enemy is a squid.
             _Enemy = new Squid;
             break;
-        case 3:
+        case etGiantSquid:
             // Enemy is a giant squid.
             _Enemy = new GiantSquid;
             break;
-		case 4:
+		case etLich:
 			// Enemy is a Lich
 			_Enemy = new Lich;
+			break;
+		case etMurloc:
+			//Enemy is a Murloc
+			_Enemy = new Murloc;
+			break;
+		case etPutnafer:
+			// Enemy is a Putnafer
+			_Enemy = new Putnafer;
+			break;
+        case etZombie:
+            // Enemy is a Zombie
+            _Enemy = new Zombie;
+            break;
+		case etVampire:
+			// Enemy is a Vampire
+			_Enemy = new Vampire;
+			break;
+		case etWerewolf:
+			// Enemy is a Werewolf
+			_Enemy = new Werewolf;
+			break;
+		case etGoblin:
+			// Enemy is a Goblin
+			_Enemy = new Goblin;
+			break;
+		case etGargoyle:
+			// Enemy is a Goblin
+			_Enemy = new Gargoyle;
+			break;
+		case etCerberus:
+			// Enemy is a Cerberus
+			_Enemy = new Cerberus;
+			break;
+		case etSkeleton:
+			// Enemy is a Rat
+			_Enemy = new Skeleton;
+			break;
+		case etSmallRat:
+			// Enemy is a Small Rat
+			_Enemy = new SmallRat;
 			break;
         default:
             // If the above cases do not match the selector for any reason,
@@ -170,7 +234,9 @@ void Game::SetEnemy(){
             break;
     }
     // Simply prints that the enemy's class was encountered.
-	ColourPrint(_Enemy->GetName(), DARK_GREY);
+	cout << _Enemy->GetIntro() << endl;
+	Sleep(SLEEP_MS);
+	ColourPrint(_Enemy->GetName(), Console::DarkGrey);
     cout << " encountered!" << endl << endl;
     Sleep(SLEEP_MS);
 }
@@ -203,7 +269,7 @@ void Game::Intermission(){
         cout << "2) Store" << endl;
         cout << "3) Gamble" << endl;
 	cout << "4) Use Item" << endl;
-        cout << "5) Quit" << endl << endl;
+        cout << "0) Quit" << endl << endl;
 
         choice = input();
 
@@ -225,7 +291,7 @@ void Game::Intermission(){
 	    _Player->UseItem();
 	    _Player->SaveGame();
 	    break;
-        case 5:
+        case 0:
             // Breaks the loop in StartGame(), going back to MainMenu().
             IsPlaying=false;
 	    break;
@@ -247,7 +313,7 @@ void Game::StartGame(){
 	// This initializes the variables on the Player end.
     ClearScreen();
     _Player->SetPlayerData();
-    
+
 
     // Loops while the game is still playing.
     // Alternates between battles and intermission (gambling, store, et)
@@ -276,10 +342,15 @@ void Game::Battle(){
         _Player->DisplayHUD(_Enemy);
         _Enemy->DisplayHUD();
 
-        // Player's turn to attack Enemy.
-        _Enemy->TakeDamage(_Player->Attack());
-        // Pauses console and ignores user input for SLEEP_MS milliseconds.
-        Sleep(SLEEP_MS);
+		int damagePlayer = _Player->Action();
+        // Player's turn to attack Enemy or choose other action.
+
+		if (damagePlayer != SKIP_TURN){
+			_Enemy->TakeDamage(damagePlayer);
+			// Pauses console and ignores user input for SLEEP_MS milliseconds.
+        		Sleep(SLEEP_MS);
+		}
+
 
         // Leaves battle if player chooses to.
         if (!IsPlaying){
@@ -295,7 +366,7 @@ void Game::Battle(){
             _Player->AddExperience(_Enemy->ReturnExperience());
 			// Replenishes player's health for the next round.
 			_Player->ReplenishHealth();
-			
+
 			// If player wants to battle again, it breaks the loop and uses tail recursion to play again.
             if (PlayAgain()) break;
             // Returns to StartGame()'s loop, and executes Intermission().
@@ -303,7 +374,8 @@ void Game::Battle(){
         }
 
         // Enemy's turn to attack player.
-        _Player->TakeDamage(_Enemy->Attack());
+		if (damagePlayer != SKIP_TURN)
+			_Player->TakeDamage(_Enemy->Action());
         Sleep(SLEEP_MS);
 
         // Executes when player's health is 0 or below.
@@ -312,7 +384,7 @@ void Game::Battle(){
             _Player->LoseExperience(_Enemy->ReturnExperience());
 			// Replenishes player's health for the next round.
 			_Player->ReplenishHealth();
-			
+
 			if (PlayAgain()) break;
             return;
         }
@@ -348,7 +420,7 @@ void Game::DisplayMenu(MenuType menuType)
 		cout << "========== TURN-BASED FIGHTING GAME ==========" << endl << endl
 			<< "1) Start Game" << endl
 			<< "2) How to play" << endl
-			<< "3) Exit" << endl << endl << "> ";
+			<< "0) Exit" << endl << endl << "> ";
 		break;
 	case Game::ePlayerClass:
 		cout << endl
@@ -379,7 +451,7 @@ void Game::DisplayMenu(MenuType menuType)
 			<< "Potion: Replenishes your HP to 100" << endl
 			<< "Whetstone: Restores your weapon's sharpness." << endl << endl
 			<< "Good luck and have fun!" << endl << endl
-			<< "1) Quit" << endl << endl << "> ";
+			<< "0) Quit" << endl << endl << "> ";
 		break;
 	default:
 		break;
